@@ -1,25 +1,53 @@
 pipeline {
     agent any
+    environment {
+        DOCKER_REPO = "<dockerhub-cred>/python-app-demo" // change this
+        IMAGE_TAG = "latest"
+        IMAGE = "${DOCKER_REPO}:${IMAGE_TAG}"
+    }
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/priyanka-seth/sample-jenkins-app.git'
+                git branch: 'main', url: 'https://github.com/<your-username>/jenkins-python-docker.git'
             }
         }
-        stage('Run Python') {
+        stage('Run Python (Smoke)') {
             steps {
                 sh 'python3 script.py'
             }
         }
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t python-app-demo .'
+                sh "docker build -t ${IMAGE} ."
             }
         }
-        stage('Run Docker Container') {
+        stage('Push to Docker Hub') {
             steps {
-                sh 'docker run --rm python-app-demo'
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-cred', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh "docker push ${IMAGE}"
+                    sh 'docker logout'
+                }
             }
+        }
+        stage('Deploy on Jenkins Host (Run)') {
+            steps {
+                // stop existing container if running, then run new one
+                sh '''
+                if docker ps -a --format "{{.Names}}" | grep -w python-app-container; then
+                  docker rm -f python-app-container || true
+                fi
+                docker run -d --name python-app-container --restart unless-stopped ${IMAGE}
+                '''
+            }
+        }
+    }
+    post {
+        success {
+            echo "Pipeline finished SUCCESS - image pushed and container deployed."
+        }
+        failure {
+            echo "Pipeline FAILED - check console output."
         }
     }
 }
