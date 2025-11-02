@@ -1,7 +1,7 @@
 pipeline {
     agent any
     environment {
-        DOCKER_REPO = "<dockerhub-cred>/python-app-demo" // change this
+        DOCKER_REPO = "priyankasv/python-app-demo"   // change to your repo
         IMAGE_TAG = "latest"
         IMAGE = "${DOCKER_REPO}:${IMAGE_TAG}"
     }
@@ -32,10 +32,9 @@ pipeline {
         }
         stage('Deploy on Jenkins Host (Run)') {
             steps {
-                // stop existing container if running, then run new one
                 sh '''
                 if docker ps -a --format "{{.Names}}" | grep -w python-app-container; then
-                  docker rm -f python-app-container || true
+                    docker rm -f python-app-container || true
                 fi
                 docker run -d --name python-app-container --restart unless-stopped ${IMAGE}
                 '''
@@ -44,10 +43,10 @@ pipeline {
     }
     post {
         success {
-            echo "Pipeline finished SUCCESS - image pushed and container deployed."
+            echo "Pipeline SUCCESS ✅ — Image pushed and container deployed!"
         }
         failure {
-            echo "Pipeline FAILED - check console output."
+            echo "Pipeline FAILED ❌ — Check console output!"
         }
     }
 }
